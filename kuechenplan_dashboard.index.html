@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Küchenplan – Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F7F1;
+    --surface:#FFFFFF;
+    --ink:#1F2A1D;
+    --muted:#6B7566;
+    --line:#E2E6D9;
+    --primary:#2F5233;
+    --primary-soft:#E7EFE2;
+    --accent:#D97B3F;
+    --accent-soft:#FBE7D6;
+    --alert:#C0463C;
+    --alert-soft:#F8E1DE;
+    --radius:16px;
+    --radius-sm:9px;
+    --shadow:0 1px 2px rgba(31,42,29,.06), 0 10px 28px -14px rgba(31,42,29,.18);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    font-size:15px;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Bricolage Grotesque','Inter',sans-serif; margin:0; letter-spacing:-.01em;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  button{font-family:inherit; cursor:pointer;}
+  select,input{font-family:inherit;}
+  a{color:inherit;}
+
+  .app{max-width:1280px; margin:0 auto; padding:0 20px 64px;}
+
+  /* ---------- Topbar ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    background:var(--bg);
+    padding:22px 0 16px;
+    display:flex; flex-wrap:wrap; align-items:center; gap:18px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:24px;
+  }
+  .brand{display:flex; align-items:baseline; gap:10px; margin-right:auto;}
+  .brand h1{font-size:22px; font-weight:800; color:var(--primary);}
+  .brand span{font-size:13px; color:var(--muted); font-weight:500;}
+
+  .stepper{
+    display:flex; align-items:center; gap:0;
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:999px; padding:5px; box-shadow:var(--shadow);
+  }
+  .stepper button{
+    width:30px; height:30px; border-radius:50%; border:none;
+    background:var(--primary-soft); color:var(--primary);
+    font-size:17px; font-weight:700; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    transition:transform .12s ease;
+  }
+  .stepper button:hover{transform:scale(1.08); background:var(--primary); color:#fff;}
+  .stepper button:active{transform:scale(.94);}
+  .stepper .people{
+    display:flex; align-items:center; gap:3px; padding:0 12px; min-width:120px; justify-content:center;
+  }
+  .stepper .dot{font-size:13px; color:var(--primary); opacity:.35;}
+  .stepper .dot.on{opacity:1;}
+  .stepper .count{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:15px; margin-left:8px; color:var(--ink);}
+  .stepper .label{font-size:11px; color:var(--muted); margin-left:6px; white-space:nowrap;}
+
+  .summary{display:flex; gap:10px;}
+  .summary .pill{
+    background:var(--surface); border:1px solid var(--line); border-radius:999px;
+    padding:7px 14px; font-size:12.5px; color:var(--muted); display:flex; gap:6px; align-items:center;
+    box-shadow:var(--shadow);
+  }
+  .summary .pill b{font-family:'IBM Plex Mono',monospace; color:var(--ink); font-size:13px;}
+  .summary .pill.alert b{color:var(--alert);}
+  .summary .pill.ok b{color:var(--primary);}
+
+  /* ---------- Layout ---------- */
+  .main{
+    display:grid;
+    grid-template-columns:1.35fr 1fr;
+    grid-template-areas:
+      "plan    list"
+      "recipes list"
+      "pantry  pantry";
+    gap:22px;
+  }
+  @media (max-width:920px){
+    .main{grid-template-columns:1fr; grid-template-areas:"plan" "list" "recipes" "pantry";}
+  }
+
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:20px 20px 22px;
+  }
+  .panel-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px; gap:10px;}
+  .panel-head h2{font-size:16px; font-weight:700;}
+  .panel-head .eyebrow{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--accent); font-weight:700;}
+  .panel-sub{font-size:12.5px; color:var(--muted); margin-top:2px;}
+
+  .plan{grid-area:plan;}
+  .list{grid-area:list;}
+  .recipes{grid-area:recipes;}
+  .pantry{grid-area:pantry;}
+
+  /* ---------- Wochenplan ---------- */
+  .week-scroll{overflow-x:auto; padding-bottom:4px; margin:0 -4px;}
+  .week-grid{
+    display:grid;
+    grid-template-columns:78px repeat(7, minmax(132px,1fr));
+    gap:6px;
+    min-width:760px;
+    padding:0 4px;
+  }
+  .week-grid .corner{}
+  .week-grid .daylabel{
+    font-size:12px; font-weight:700; color:var(--primary); text-align:center; padding:6px 0;
+  }
+  .week-grid .mealtag{
+    font-size:11px; color:var(--muted); font-weight:600; display:flex; align-items:center;
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+  .cell{
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:var(--radius-sm);
+    padding:7px 7px 8px;
+    min-height:64px;
+    display:flex; flex-direction:column; gap:5px;
+    transition:border-color .15s ease;
+  }
+  .cell.filled{border-color:var(--primary-soft); background:var(--primary-soft);}
+  .cell select{
+    width:100%; border:none; background:transparent; font-size:12px; font-weight:600;
+    color:var(--ink); padding:0; appearance:none; cursor:pointer;
+  }
+  .cell select:focus{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;}
+  .cell .override-row{
+    display:flex; align-items:center; gap:5px; font-size:11px; color:var(--muted);
+  }
+  .cell .override-row input{
+    width:30px; border:1px solid var(--line); border-radius:5px; padding:1px 3px;
+    font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:center; background:var(--surface);
+  }
+  .cell .override-row button{
+    border:none; background:none; color:var(--accent); font-size:13px; padding:0 2px;
+    display:none;
+  }
+  .cell.has-override .override-row button{display:inline;}
+
+  /* ---------- Rezepte ---------- */
+  .recipe-card{
+    border:1px solid var(--line); border-radius:var(--radius-sm); padding:13px 14px; margin-bottom:10px;
+  }
+  .recipe-card:last-child{margin-bottom:0;}
+  .recipe-card summary{
+    list-style:none; cursor:pointer; display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+  }
+  .recipe-card summary::-webkit-details-marker{display:none;}
+  .recipe-card summary .title{font-weight:700; font-size:14px;}
+  .recipe-card summary .meta{font-size:11.5px; color:var(--muted); margin-top:3px;}
+  .recipe-card summary .chevron{color:var(--muted); font-size:12px; margin-top:2px; transition:transform .15s ease;}
+  .recipe-card[open] summary .chevron{transform:rotate(90deg);}
+  .badge{
+    display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600;
+    padding:3px 9px; border-radius:999px; background:var(--accent-soft); color:#9a4c1e; white-space:nowrap;
+  }
+  .badge.green{background:var(--primary-soft); color:var(--primary);}
+  .recipe-body{margin-top:11px; padding-top:11px; border-top:1px dashed var(--line);}
+  .recipe-body p{margin:0 0 10px; font-size:13px; color:var(--ink);}
+  .ing-list{display:flex; flex-wrap:wrap; gap:6px;}
+  .ing-list span{
+    font-size:11.5px; background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:3px 8px;
+  }
+  .ing-list span b{font-family:'IBM Plex Mono',monospace; font-weight:600;}
+
+  /* ---------- Einkaufsliste ---------- */
+  .cat-group{margin-bottom:14px;}
+  .cat-group:last-child{margin-bottom:0;}
+  .cat-title{
+    font-size:11.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em;
+    margin-bottom:6px; display:flex; align-items:center; gap:6px;
+  }
+  .row{
+    display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line);
+    font-size:13.5px;
+  }
+  .row:last-child{border-bottom:none;}
+  .row .name{flex:1;}
+  .row .amount{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--muted); white-space:nowrap;}
+  .row.done .name, .row.done .amount{color:var(--muted); text-decoration:line-through; opacity:.7;}
+  .check{
+    width:19px; height:19px; border-radius:6px; border:1.5px solid var(--line); background:var(--surface);
+    display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff; flex-shrink:0;
+  }
+  .check.checked{background:var(--accent); border-color:var(--accent);}
+  .pill-status{
+    font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap;
+  }
+  .pill-status.buy{background:var(--alert-soft); color:var(--alert);}
+  .pill-status.home{background:var(--primary-soft); color:var(--primary);}
+  .empty-list{font-size:13px; color:var(--muted); padding:10px 0;}
+
+  /* ---------- Vorrat ---------- */
+  .pantry-groups{display:flex; flex-direction:column; gap:14px;}
+  .pantry-row{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .pantry-cat{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;}
+  .chip-wrap{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px;}
+  .chip-wrap:last-child{margin-bottom:0;}
+  .chip{
+    border:1px solid var(--line); background:var(--bg); border-radius:999px; padding:6px 12px;
+    font-size:12.5px; font-weight:600; color:var(--muted); display:flex; align-items:center; gap:6px;
+  }
+  .chip.on{background:var(--primary); color:#fff; border-color:var(--primary);}
+  .chip .dot{width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.6;}
+
+  footer{
+    text-align:center; font-size:11.5px; color:var(--muted); margin-top:30px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <h1>Küchenplan</h1>
+      <span>Wochenübersicht &amp; smarte Einkaufsliste</span>
+    </div>
+
+    <div class="stepper" aria-label="Standard-Personenzahl">
+      <button id="dec" aria-label="weniger Personen">–</button>
+      <div class="people" id="peopleDots"></div>
+      <span class="label">Pers.</span>
+      <button id="inc" aria-label="mehr Personen">+</button>
+    </div>
+
+    <div class="summary">
+      <div class="pill alert">noch zu kaufen <b id="sumBuy">0</b></div>
+      <div class="pill ok">schon zuhause <b id="sumHome">0</b></div>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <section class="panel plan">
+      <div class="panel-head">
+        <div>
+          <div class="eyebrow">Speiseplan</div>
+          <h2>Diese Woche</h2>
+        </div>
+        <div class="panel-sub">Rezept wählen &middot; Personenzahl pro Mahlzeit überschreibbar</div>
+      </div>
+      <div class="week-scroll">
+        <div class="week-grid" id="weekGrid"></div>
+      </div>
+    </section>
+
+    <section class="panel list">
+      <div class="panel-head">
+        <div>
+          <div class="eyebrow">Automatisch berechnet</div>
+          <h2>Einkaufsliste</h2>
+        </div>
+      </div>
+      <div id="shoppingList"></div>
+    </section>
+
+    <section class="panel recipes">
+      <div class="panel-head">
+        <div>
+          <div class="eyebrow">Gesund &middot; günstig &middot; laktosefrei</div>
+          <h2>Rezepte</h2>
+        </div>
+      </div>
+      <div id="recipeList"></div>
+    </section>
+
+    <section class="panel pantry">
+      <div class="panel-head">
+        <div>
+          <div class="eyebrow">Vorrat</div>
+          <h2>Was ist schon zuhause?</h2>
+        </div>
+        <div class="panel-sub">Anklicken zum Umschalten – wirkt sich live auf die Einkaufsliste aus</div>
+      </div>
+      <div id="pantryList"></div>
+    </section>
+
+  </div>
+
+  <footer>Speichert jetzt automatisch im Browser dieses Geräts (sobald die Seite über eine echte Web-Adresse läuft, nicht in der Claude-Vorschau). Kein Cloud-Sync zwischen Geräten – die dauerhafte, geräteübergreifende Datenquelle bleibt deine Google&nbsp;Tabelle&nbsp;/&nbsp;AppSheet-App.</footer>
+</div>
+
+<script>
+/* ---------------- Daten (gespiegelt aus der Google-Tabelle) ---------------- */
+
+const CATEGORIES = [
+  {key:'Obst & Gemüse', icon:'🥦'},
+  {key:'Fleisch & Fisch', icon:'🍗'},
+  {key:'Kühlregal', icon:'🥚'},
+  {key:'Trockenware & Hülsenfrüchte', icon:'🌾'},
+  {key:'Konserven', icon:'🥫'},
+  {key:'Backwaren', icon:'🍞'},
+  {key:'Gewürze & Sonstiges', icon:'🧂'},
+];
+const catIcon = key => (CATEGORIES.find(c=>c.key===key)||{}).icon || '•';
+
+const MASTER = [
+  {name:'Karotten', kategorie:'Obst & Gemüse', einheit:'Stück'},
+  {name:'Zwiebel', kategorie:'Obst & Gemüse', einheit:'Stück'},
+  {name:'Knoblauch', kategorie:'Obst & Gemüse', einheit:'Stück'},
+  {name:'Ingwer', kategorie:'Obst & Gemüse', einheit:'g'},
+  {name:'Paprika', kategorie:'Obst & Gemüse', einheit:'Stück'},
+  {name:'Zucchini', kategorie:'Obst & Gemüse', einheit:'Stück'},
+  {name:'Süßkartoffel', kategorie:'Obst & Gemüse', einheit:'Stück'},
+  {name:'Gurke', kategorie:'Obst & Gemüse', einheit:'Stück'},
+  {name:'Tomaten', kategorie:'Obst & Gemüse', einheit:'Stück'},
+  {name:'Zitrone', kategorie:'Obst & Gemüse', einheit:'Stück'},
+  {name:'Petersilie', kategorie:'Obst & Gemüse', einheit:'Bund'},
+  {name:'Spinat', kategorie:'Obst & Gemüse', einheit:'g'},
+  {name:'Hähnchenbrust', kategorie:'Fleisch & Fisch', einheit:'g'},
+  {name:'Eier', kategorie:'Kühlregal', einheit:'Stück'},
+  {name:'Rote Linsen', kategorie:'Trockenware & Hülsenfrüchte', einheit:'g'},
+  {name:'Reis', kategorie:'Trockenware & Hülsenfrüchte', einheit:'g'},
+  {name:'Vollkornnudeln', kategorie:'Trockenware & Hülsenfrüchte', einheit:'g'},
+  {name:'Kokosmilch', kategorie:'Konserven', einheit:'ml'},
+  {name:'Tomaten passiert', kategorie:'Konserven', einheit:'ml'},
+  {name:'Kichererbsen', kategorie:'Konserven', einheit:'g'},
+  {name:'Vollkornbrot', kategorie:'Backwaren', einheit:'Scheiben'},
+  {name:'Currypulver', kategorie:'Gewürze & Sonstiges', einheit:'EL'},
+  {name:'Oregano', kategorie:'Gewürze & Sonstiges', einheit:'TL'},
+  {name:'Sojasauce', kategorie:'Gewürze & Sonstiges', einheit:'EL'},
+  {name:'Öl', kategorie:'Gewürze & Sonstiges', einheit:'EL'},
+  {name:'Olivenöl', kategorie:'Gewürze & Sonstiges', einheit:'EL'},
+  {name:'Gemüsebrühe', kategorie:'Gewürze & Sonstiges', einheit:'ml'},
+];
+const unitOf = name => (MASTER.find(m=>m.name===name)||{}).einheit || '';
+
+const RECIPES = [
+  {id:'r1', name:'Linsen-Gemüse-Curry mit Kokosmilch', kategorie:'Mittag- oder Abendessen',
+   basisPortionen:4, kosten:6, zeit:30, laktosefrei:true,
+   desc:'Zwiebel, Knoblauch und Ingwer anschwitzen, Currypulver kurz mitrösten. Karotten zugeben, mit Gemüsebrühe und Kokosmilch ablöschen. Linsen zugeben und ca. 20 Min köcheln lassen. Mit Reis servieren.',
+   ingredients:[
+     {name:'Rote Linsen', menge:250},{name:'Kokosmilch', menge:400},{name:'Karotten', menge:2},
+     {name:'Zwiebel', menge:1},{name:'Knoblauch', menge:2},{name:'Ingwer', menge:20},
+     {name:'Currypulver', menge:2},{name:'Gemüsebrühe', menge:500},{name:'Reis', menge:300},{name:'Öl', menge:2},
+   ]},
+  {id:'r2', name:'Hähnchen-Gemüse-Pfanne mit Reis', kategorie:'Mittag- oder Abendessen',
+   basisPortionen:4, kosten:9, zeit:25, laktosefrei:true,
+   desc:'Hähnchenbrust in Streifen anbraten. Paprika, Zucchini und Zwiebel zugeben, 8–10 Min mitbraten. Mit Sojasauce abschmecken, mit Reis servieren.',
+   ingredients:[
+     {name:'Hähnchenbrust', menge:500},{name:'Paprika', menge:2},{name:'Zucchini', menge:1},
+     {name:'Zwiebel', menge:1},{name:'Sojasauce', menge:3},{name:'Reis', menge:300},{name:'Öl', menge:2},
+   ]},
+  {id:'r3', name:'Vollkorn-Pasta mit Tomaten-Linsen-Bolognese', kategorie:'Mittag- oder Abendessen',
+   basisPortionen:4, kosten:7, zeit:25, laktosefrei:true,
+   desc:'Zwiebel, Knoblauch und Karotten anbraten. Linsen und passierte Tomaten zugeben, mit Oregano würzen, 15 Min köcheln. Mit Vollkornnudeln servieren.',
+   ingredients:[
+     {name:'Vollkornnudeln', menge:400},{name:'Rote Linsen', menge:150},{name:'Tomaten passiert', menge:700},
+     {name:'Zwiebel', menge:1},{name:'Knoblauch', menge:2},{name:'Karotten', menge:1},
+     {name:'Oregano', menge:1},{name:'Öl', menge:2},
+   ]},
+  {id:'r4', name:'Ofen-Süßkartoffel mit Kichererbsen-Salat', kategorie:'Mittag- oder Abendessen',
+   basisPortionen:4, kosten:8, zeit:35, laktosefrei:true,
+   desc:'Süßkartoffeln in Spalten ca. 30 Min bei 200°C backen. Kichererbsen, Gurke und Tomaten würfeln, mit Zitrone, Olivenöl und Petersilie mischen. Zusammen servieren.',
+   ingredients:[
+     {name:'Süßkartoffel', menge:4},{name:'Kichererbsen', menge:480},{name:'Gurke', menge:1},
+     {name:'Tomaten', menge:4},{name:'Zitrone', menge:1},{name:'Olivenöl', menge:3},{name:'Petersilie', menge:1},
+   ]},
+  {id:'r5', name:'Gemüse-Rührei mit Vollkornbrot', kategorie:'Frühstück',
+   basisPortionen:4, kosten:6, zeit:15, laktosefrei:true,
+   desc:'Paprika und Zwiebel anbraten, Spinat zugeben und zusammenfallen lassen. Eier verquirlen, dazugeben, stocken lassen. Mit Vollkornbrot servieren.',
+   ingredients:[
+     {name:'Eier', menge:8},{name:'Paprika', menge:1},{name:'Zwiebel', menge:1},
+     {name:'Spinat', menge:200},{name:'Vollkornbrot', menge:8},{name:'Öl', menge:1},
+   ]},
+];
+const recipeById = id => RECIPES.find(r=>r.id===id);
+
+const DAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+const DAYS_SHORT = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+const MEALS = ['Frühstück','Mittagessen','Abendessen'];
+const MEALS_SHORT = ['Früh','Mittag','Abend'];
+
+/* ---------------- Zustand ---------------- */
+
+let personenDefault = 4;
+
+const plan = {};
+DAYS.forEach(d => MEALS.forEach(m => { plan[d+'|'+m] = {recipeId:null, override:null}; }));
+plan['Montag|Mittagessen'].recipeId = 'r1';
+plan['Dienstag|Mittagessen'].recipeId = 'r2';
+plan['Mittwoch|Mittagessen'].recipeId = 'r3';
+plan['Donnerstag|Mittagessen'].recipeId = 'r4';
+plan['Freitag|Frühstück'].recipeId = 'r5';
+
+const vorrat = {};
+MASTER.forEach(m => vorrat[m.name] = false);
+['Öl','Reis','Currypulver','Oregano','Gemüsebrühe','Olivenöl'].forEach(n => vorrat[n] = true);
+
+const gekauft = {};
+
+/* ---------------- Speichern (funktioniert, sobald die Seite auf einer echten URL läuft – */
+/* im Claude-Vorschaufenster wird das vom Browser blockiert und einfach ignoriert) --------- */
+
+const STORAGE_KEY = 'kuechenplan_v1';
+
+function loadState(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    if(typeof data.personenDefault === 'number') personenDefault = data.personenDefault;
+    if(data.plan){
+      Object.keys(plan).forEach(k => { if(data.plan[k]) plan[k] = data.plan[k]; });
+    }
+    if(data.vorrat){
+      Object.keys(vorrat).forEach(k => { if(k in data.vorrat) vorrat[k] = data.vorrat[k]; });
+    }
+    if(data.gekauft) Object.assign(gekauft, data.gekauft);
+  } catch(e){ /* localStorage nicht verfügbar – läuft dann einfach nur im Arbeitsspeicher */ }
+}
+
+function saveState(){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({personenDefault, plan, vorrat, gekauft}));
+  } catch(e){ /* ignorieren, z.B. im Privatmodus oder in der Claude-Vorschau */ }
+}
+
+/* ---------------- Berechnung ---------------- */
+
+function computeDemand(){
+  const demand = {};
+  Object.values(plan).forEach(entry => {
+    if(!entry.recipeId) return;
+    const recipe = recipeById(entry.recipeId);
+    const effPersonen = entry.override ?? personenDefault;
+    const factor = effPersonen / recipe.basisPortionen;
+    recipe.ingredients.forEach(ing => {
+      if(!demand[ing.name]) demand[ing.name] = 0;
+      demand[ing.name] += ing.menge * factor;
+    });
+  });
+  return demand;
+}
+
+function fmtAmount(n){
+  const r = Math.round(n*10)/10;
+  return (r % 1 === 0) ? String(Math.round(r)) : String(r).replace('.', ',');
+}
+
+/* ---------------- Rendering ---------------- */
+
+function renderStepper(){
+  const dotsWrap = document.getElementById('peopleDots');
+  dotsWrap.innerHTML = '';
+  const maxDots = Math.max(personenDefault, 6);
+  for(let i=1;i<=Math.min(maxDots,8);i++){
+    const span = document.createElement('span');
+    span.className = 'dot' + (i<=personenDefault ? ' on' : '');
+    span.textContent = '●';
+    dotsWrap.appendChild(span);
+  }
+  const count = document.createElement('span');
+  count.className = 'count';
+  count.textContent = personenDefault;
+  dotsWrap.appendChild(count);
+}
+
+function renderWeek(){
+  const grid = document.getElementById('weekGrid');
+  grid.innerHTML = '';
+
+  grid.appendChild(el('div','corner'));
+  DAYS_SHORT.forEach(d => { const c = el('div','daylabel'); c.textContent = d; grid.appendChild(c); });
+
+  MEALS.forEach((meal, mi) => {
+    const tag = el('div','mealtag'); tag.textContent = MEALS_SHORT[mi]; grid.appendChild(tag);
+
+    DAYS.forEach(day => {
+      const key = day+'|'+meal;
+      const entry = plan[key];
+      const cell = el('div','cell' + (entry.recipeId ? ' filled' : '') + (entry.override!=null ? ' has-override':''));
+
+      const select = document.createElement('select');
+      const optNone = document.createElement('option');
+      optNone.value=''; optNone.textContent='– frei –';
+      select.appendChild(optNone);
+      RECIPES.forEach(r => {
+        const o = document.createElement('option');
+        o.value = r.id; o.textContent = r.name.length>26 ? r.name.slice(0,24)+'…' : r.name;
+        if(entry.recipeId===r.id) o.selected = true;
+        select.appendChild(o);
+      });
+      select.addEventListener('change', () => {
+        entry.recipeId = select.value || null;
+        if(!entry.recipeId) entry.override = null;
+        renderAll();
+      });
+      cell.appendChild(select);
+
+      if(entry.recipeId){
+        const row = el('div','override-row');
+        const input = document.createElement('input');
+        input.type='number'; input.min='1'; input.max='20';
+        input.value = entry.override ?? personenDefault;
+        input.addEventListener('change', () => {
+          const v = parseInt(input.value,10);
+          entry.override = (!v || v===personenDefault) ? null : v;
+          renderAll();
+        });
+        const resetBtn = document.createElement('button');
+        resetBtn.textContent='↺'; resetBtn.title='Standard verwenden';
+        resetBtn.addEventListener('click', () => { entry.override=null; renderAll(); });
+        row.appendChild(input);
+        row.appendChild(document.createTextNode('Pers.'));
+        row.appendChild(resetBtn);
+        cell.appendChild(row);
+      }
+
+      grid.appendChild(cell);
+    });
+  });
+}
+
+function renderRecipes(){
+  const wrap = document.getElementById('recipeList');
+  wrap.innerHTML = '';
+  RECIPES.forEach(r => {
+    const card = document.createElement('details');
+    card.className='recipe-card';
+    const summary = document.createElement('summary');
+    summary.innerHTML = `
+      <div>
+        <div class="title">${r.name}</div>
+        <div class="meta">${r.kategorie} &middot; ${r.zeit} Min &middot; ca. ${r.kosten}&nbsp;€ / ${r.basisPortionen} Port.</div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+        <span class="badge green">laktosefrei</span>
+        <span class="chevron">▸</span>
+      </div>`;
+    const body = document.createElement('div');
+    body.className='recipe-body';
+    const ingHtml = r.ingredients.map(i => `<span><b>${fmtAmount(i.menge)} ${unitOf(i.name)}</b> ${i.name}</span>`).join('');
+    body.innerHTML = `<p>${r.desc}</p><div class="ing-list">${ingHtml}</div>`;
+    card.appendChild(summary);
+    card.appendChild(body);
+    wrap.appendChild(card);
+  });
+}
+
+function renderPantry(){
+  const wrap = document.getElementById('pantryList');
+  wrap.innerHTML = '';
+  CATEGORIES.forEach(cat => {
+    const items = MASTER.filter(m => m.kategorie===cat.key);
+    if(!items.length) return;
+    const catTitle = el('div','pantry-cat'); catTitle.textContent = cat.icon+' '+cat.key;
+    const chipWrap = el('div','chip-wrap');
+    items.forEach(item => {
+      const chip = el('button','chip'+(vorrat[item.name]?' on':''));
+      chip.innerHTML = `<span class="dot"></span>${item.name}`;
+      chip.addEventListener('click', () => { vorrat[item.name] = !vorrat[item.name]; renderAll(); });
+      chipWrap.appendChild(chip);
+    });
+    wrap.appendChild(catTitle);
+    wrap.appendChild(chipWrap);
+  });
+}
+
+function renderShoppingList(){
+  const wrap = document.getElementById('shoppingList');
+  wrap.innerHTML = '';
+  const demand = computeDemand();
+  const names = Object.keys(demand).filter(n => demand[n] > 0.001);
+
+  let buyCount = 0, homeCount = 0;
+
+  if(!names.length){
+    wrap.innerHTML = '<div class="empty-list">Noch keine Mahlzeiten geplant – wähle oben Rezepte für die Woche aus.</div>';
+  } else {
+    CATEGORIES.forEach(cat => {
+      const catNames = names.filter(n => unitOf(n) !== undefined && (MASTER.find(m=>m.name===n)||{}).kategorie === cat.key);
+      if(!catNames.length) return;
+      const group = el('div','cat-group');
+      const title = el('div','cat-title'); title.textContent = cat.icon+' '+cat.key;
+      group.appendChild(title);
+      catNames.sort().forEach(name => {
+        const isHome = !!vorrat[name];
+        const amount = fmtAmount(demand[name]) + ' ' + unitOf(name);
+        const row = el('div','row'+(isHome?' done':''));
+        if(isHome){
+          homeCount++;
+          row.innerHTML = `<div class="check checked">✓</div><div class="name">${name}</div><div class="amount">${amount}</div><span class="pill-status home">im Haus</span>`;
+        } else {
+          buyCount++;
+          const done = !!gekauft[name];
+          row.innerHTML = `<div class="check${done?' checked':''}">${done?'✓':''}</div><div class="name">${name}</div><div class="amount">${amount}</div><span class="pill-status buy">kaufen</span>`;
+          row.querySelector('.check').addEventListener('click', () => { gekauft[name] = !gekauft[name]; renderAll(); });
+          if(done) row.classList.add('done');
+        }
+        group.appendChild(row);
+      });
+      wrap.appendChild(group);
+    });
+  }
+
+  document.getElementById('sumBuy').textContent = buyCount;
+  document.getElementById('sumHome').textContent = homeCount;
+}
+
+function el(tag, cls){ const e=document.createElement(tag); if(cls) e.className=cls; return e; }
+
+function renderAll(){
+  renderStepper();
+  renderWeek();
+  renderRecipes();
+  renderPantry();
+  renderShoppingList();
+  saveState();
+}
+
+document.getElementById('dec').addEventListener('click', () => { personenDefault = Math.max(1, personenDefault-1); renderAll(); });
+document.getElementById('inc').addEventListener('click', () => { personenDefault = Math.min(20, personenDefault+1); renderAll(); });
+
+loadState();
+renderAll();
+</script>
+</body>
+</html>
