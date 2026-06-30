@@ -510,7 +510,6 @@
 <datalist id="masterIngredientNames"></datalist>
 
 <script type="module">
-
 /* =========================================================================
    FIREBASE SETUP
    1. Gehe zu https://console.firebase.google.com → "Projekt hinzufügen" (kostenlos).
@@ -520,16 +519,14 @@
    4. Im Firebase-Menü: "Firestore Database" → "Datenbank erstellen" (Produktivmodus reicht,
       die Sicherheitsregeln unten im Chat einfügen unter "Firestore" → "Regeln").
    ========================================================================= */
-
 const firebaseConfig = {
-  apiKey: "AIzaSyB_h7nMv-ri85eTQtm4Zriu8uNCgmIwpaw",
-  authDomain: "haushaltsplanner-f9fc5.firebaseapp.com",
-  projectId: "haushaltsplanner-f9fc5",
-  storageBucket: "haushaltsplanner-f9fc5.firebasestorage.app",
-  messagingSenderId: "851861908723",
-  appId: "1:851861908723:web:efd41c2c4f3fe757cd9b86"
+  apiKey: "DEIN_API_KEY",
+  authDomain: "DEIN_PROJEKT.firebaseapp.com",
+  projectId: "DEIN_PROJEKT",
+  storageBucket: "DEIN_PROJEKT.appspot.com",
+  messagingSenderId: "DEINE_SENDER_ID",
+  appId: "DEINE_APP_ID",
 };
-
 
 const FIREBASE_NOT_CONFIGURED = firebaseConfig.apiKey === "DEIN_API_KEY";
 
@@ -1086,13 +1083,15 @@ function plannedIngredientNames(){
 function renderPantry(){
   const wrap = document.getElementById('pantryList');
   wrap.innerHTML = '';
-  const planned = plannedIngredientNames();
-  if(!planned.size){
+  const demand = computeDemand();
+  const planned = Object.keys(demand).filter(n => demand[n] > 0.001);
+  if(!planned.length){
     wrap.innerHTML = '<div class="empty-list">Noch keine Rezepte im Speiseplan – sobald du welche einträgst, erscheinen hier deren Zutaten zum Abhaken.</div>';
     return;
   }
+  const plannedSet = new Set(planned);
   CATEGORIES.forEach(cat => {
-    const items = MASTER.filter(m => m.kategorie===cat.key && planned.has(m.name));
+    const items = MASTER.filter(m => m.kategorie===cat.key && plannedSet.has(m.name));
     if(!items.length) return;
     const catTitle = el('div','cat-title'); catTitle.textContent = cat.icon+' '+cat.key;
     wrap.appendChild(catTitle);
@@ -1100,8 +1099,12 @@ function renderPantry(){
       const row = el('div','ios-row');
       const switchId = 'vorrat-'+item.name.replace(/\s+/g,'-');
       const isOn = !!vorrat[item.name];
+      const amount = fmtAmount(demand[item.name]) + ' ' + unitOf(item.name);
       row.innerHTML = `
-        <label for="${switchId}">${item.name}</label>
+        <label for="${switchId}" style="display:flex; flex-direction:column; gap:1px;">
+          <span>${item.name}</span>
+          <span style="font-size:11.5px; color:var(--label-secondary); font-weight:500;">${amount}</span>
+        </label>
         <div class="ios-switch">
           <input id="${switchId}" type="checkbox" ${isOn?'checked':''}>
           <span class="track"></span><span class="thumb"></span>
