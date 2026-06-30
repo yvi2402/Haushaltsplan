@@ -520,12 +520,7 @@
    4. Im Firebase-Menü: "Firestore Database" → "Datenbank erstellen" (Produktivmodus reicht,
       die Sicherheitsregeln unten im Chat einfügen unter "Firestore" → "Regeln").
    ========================================================================= */
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyB_h7nMv-ri85eTQtm4Zriu8uNCgmIwpaw",
   authDomain: "haushaltsplanner-f9fc5.firebaseapp.com",
@@ -535,8 +530,6 @@ const firebaseConfig = {
   appId: "1:851861908723:web:efd41c2c4f3fe757cd9b86"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
 
 const FIREBASE_NOT_CONFIGURED = firebaseConfig.apiKey === "DEIN_API_KEY";
 
